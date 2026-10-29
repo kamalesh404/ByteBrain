@@ -23,7 +23,7 @@ ByteBrain is a fully private, in-browser AI Study Companion. It runs powerful LL
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/kamalesh4044/ByteBrain.git
+   git clone https://github.com/kamalesh404/ByteBrain.git
    ```
 2. Navigate into the directory and install dependencies:
    ```bash
