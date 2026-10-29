@@ -10,6 +10,7 @@ class AIService {
   private initPromise: Promise<void> | null = null;
   private worker: Worker | null = null;
   private isGenerating = false;
+  private isClearingCache = false;
   // Capable 3.8B parameter model running in 4-bit quantization (~1.8-2.3 GB)
   private modelId = 'Phi-3-mini-4k-instruct-q4f16_1-MLC';
 
@@ -21,8 +22,12 @@ class AIService {
     return this.isGenerating;
   }
 
+  get isDeletingCache(): boolean {
+    return this.isClearingCache;
+  }
+
   get isBusy(): boolean {
-    return Boolean(this.initPromise) || this.isGenerating;
+    return Boolean(this.initPromise) || this.isGenerating || this.isClearingCache;
   }
 
   get isReady(): boolean {
@@ -54,6 +59,9 @@ class AIService {
   }
 
   async init(onProgress?: (progress: InitProgressReport) => void): Promise<void> {
+    if (this.isClearingCache) {
+      throw new Error('Cannot initialize AI Engine while cache deletion is in progress.');
+    }
     if (this.engine) return;
     if (this.initPromise) {
       return this.initPromise;
@@ -64,6 +72,10 @@ class AIService {
         const gpuCheck = await this.checkWebGPUSupport();
         if (!gpuCheck.supported) {
           throw new Error(gpuCheck.error);
+        }
+
+        if (this.isClearingCache) {
+          throw new Error('Cannot initialize AI Engine while cache deletion is in progress.');
         }
 
         const worker = new Worker(
@@ -92,9 +104,15 @@ class AIService {
   }
 
   async deleteModelCache(): Promise<boolean> {
-    if (this.isBusy) {
+    if (this.isClearingCache) {
+      throw new Error('Cache deletion is already in progress.');
+    }
+    if (this.initPromise || this.isGenerating) {
       throw new Error('Cannot clear model cache while the AI engine is initializing or generating a response.');
     }
+
+    // Set lock synchronously before the first await
+    this.isClearingCache = true;
 
     try {
       // Clean up worker and engine instances consistently, not conditional on engine being non-null
@@ -124,6 +142,8 @@ class AIService {
     } catch (err) {
       console.error('Failed to clear cache', err);
       throw err;
+    } finally {
+      this.isClearingCache = false;
     }
   }
 
@@ -138,6 +158,9 @@ class AIService {
     contextFilesText?: string,
     onChunk?: (chunk: string) => void
   ): Promise<string> {
+    if (this.isClearingCache) {
+      throw new Error('Cannot generate response while cache deletion is in progress.');
+    }
     if (!this.engine) {
       throw new Error('AI Engine is not initialized. Please ensure model loading completes before submitting prompts.');
     }

@@ -51,6 +51,7 @@ We welcome contributions from human developers and coding agents alike. This doc
 | :--- | :--- |
 | `npm run dev` | Starts the Vite local development server with Hot Module Replacement (HMR). |
 | `npm run lint` | Runs ESLint over TypeScript and React files to catch syntax and style errors. |
+| `npm test` | Runs Node's native test runner (`node --test`) for service concurrency and lifecycle checks. |
 | `npm run build` | Runs TypeScript compilation check (`tsc -b`) followed by Vite production bundling. |
 | `npm run preview` | Serves the production build locally to test production behavior. |
 

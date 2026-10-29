@@ -124,6 +124,7 @@ Navigate to `http://localhost:5173`.
 
 - `npm run dev`: Launch local Vite development server.
 - `npm run lint`: Run ESLint checks across TypeScript and React code.
+- `npm test`: Run automated concurrency and lifecycle tests with Node's native test runner.
 - `npm run build`: Check TypeScript types (`tsc -b`) and produce an optimized production bundle.
 - `npm run preview`: Serve the local production bundle for smoke testing.
 

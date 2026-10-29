@@ -24,12 +24,13 @@ function App() {
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
   const [cacheStatus, setCacheStatus] = useState<string>('');
+  const [isClearingCache, setIsClearingCache] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const isEngineBusy = isGenerating || Boolean(engineState);
+  const isEngineBusy = isGenerating || Boolean(engineState) || isClearingCache;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -85,12 +86,17 @@ function App() {
 
   const handleClearCache = async () => {
     if (isEngineBusy) {
-      setCacheStatus('Cannot clear cache while AI is initializing or generating.');
+      setCacheStatus(
+        isClearingCache
+          ? 'Cache clearing is already in progress...'
+          : 'Cannot clear cache while AI is initializing or generating.'
+      );
       setTimeout(() => setCacheStatus(''), 4000);
       return;
     }
 
-    setCacheStatus('Clearing...');
+    setIsClearingCache(true);
+    setCacheStatus('Clearing model cache...');
     try {
       const deleted = await aiService.deleteModelCache();
       if (deleted) {
@@ -101,12 +107,14 @@ function App() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to clear cache.';
       setCacheStatus(message);
+    } finally {
+      setIsClearingCache(false);
+      setTimeout(() => setCacheStatus(''), 4000);
     }
-    setTimeout(() => setCacheStatus(''), 4000);
   };
 
   const handleSend = async () => {
-    if ((!input.trim() && attachedFiles.length === 0) || isGenerating) return;
+    if ((!input.trim() && attachedFiles.length === 0) || isGenerating || isClearingCache) return;
 
     const currentInput = input;
     setInput('');
@@ -166,7 +174,9 @@ function App() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (!isClearingCache) {
+        handleSend();
+      }
     }
   };
 
@@ -317,12 +327,18 @@ function App() {
             </button>
 
             <textarea
-              placeholder={isUploading ? "Scanning file text..." : "Ask a question or paste your notes here..."}
+              placeholder={
+                isUploading
+                  ? "Scanning file text..."
+                  : isClearingCache
+                  ? "Cache deletion in progress..."
+                  : "Ask a question or paste your notes here..."
+              }
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              disabled={isUploading}
+              disabled={isUploading || isClearingCache}
               style={{ minHeight: '24px' }}
               aria-label="Message prompt"
             />
@@ -341,8 +357,8 @@ function App() {
               <button
                 className="send-btn"
                 onClick={handleSend}
-                disabled={(!input.trim() && attachedFiles.length === 0) || isGenerating || isUploading}
-                title="Send message"
+                disabled={(!input.trim() && attachedFiles.length === 0) || isGenerating || isUploading || isClearingCache}
+                title={isClearingCache ? "Cannot send message while clearing cache" : "Send message"}
                 aria-label="Send message"
               >
                 <Send size={18} />
@@ -376,13 +392,13 @@ function App() {
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '13px', fontWeight: 500, color: cacheStatus.includes('success') ? '#10b981' : isEngineBusy ? '#f59e0b' : 'var(--text-primary)' }}>
-                    {cacheStatus || (isEngineBusy ? 'Engine active (cache clearing unavailable)' : 'Manage AI Model Cache')}
+                    {cacheStatus || (isEngineBusy ? (isClearingCache ? 'Clearing cache in progress...' : 'Engine active (cache clearing unavailable)') : 'Manage AI Model Cache')}
                   </span>
                   <button
                     className="danger-btn"
                     onClick={handleClearCache}
                     disabled={isEngineBusy}
-                    title={isEngineBusy ? "Cannot clear cache while AI engine is busy" : "Delete Cache"}
+                    title={isClearingCache ? "Cache deletion in progress" : isEngineBusy ? "Cannot clear cache while AI engine is busy" : "Delete Cache"}
                     aria-label="Delete model cache"
                   >
                     <Trash2 size={16} /> Delete Cache

@@ -37,9 +37,9 @@ This document defines expectations and operating rules for autonomous coding age
 - Always run the repository validation commands before submitting changes:
   ```bash
   npm run lint
+  npm test
   npm run build
   ```
-- Note that `npm run test` does not currently exist. Do not invent or run nonexistent test scripts.
 - Report exact commands executed and their actual exit codes. Never claim a command passed if it was not run or failed.
 
 ---
