@@ -32,7 +32,7 @@ body:
       label: Alternatives Considered
       description: Have you considered any alternative workarounds or designs?
     validations:
-      false
+      required: false
 
   - type: textarea
     id: local_constraints
@@ -40,4 +40,4 @@ body:
       label: Client-Side / WebGPU Considerations
       description: How might this affect browser memory, GPU resources, or client-side storage?
     validations:
-      false
+      required: false

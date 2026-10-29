@@ -19,17 +19,18 @@ Only the latest commit on the `master` branch is actively supported with securit
 
 **Please do not report security vulnerabilities through public GitHub issues or public pull requests.**
 
-If you discover a security vulnerability in ByteBrain, please report it privately through GitHub's Private Vulnerability Reporting:
+If you discover a security vulnerability in ByteBrain, report it privately using GitHub Private Vulnerability Reporting:
 
 1. Navigate to the [ByteBrain Security Advisories](https://github.com/kamalesh404/ByteBrain/security/advisories) tab.
 2. Click **"Report a vulnerability"** to open a confidential draft advisory:
    [https://github.com/kamalesh404/ByteBrain/security/advisories/new](https://github.com/kamalesh404/ByteBrain/security/advisories/new)
+   *(Note: This reporting link requires the repository maintainer to have enabled Private Vulnerability Reporting under repository settings).*
 3. Provide:
    - A detailed description of the vulnerability.
    - Proof of concept or reproduction steps.
    - An assessment of the potential impact.
 
-If private vulnerability reporting is unavailable or inaccessible, contact the project maintainer via their verified GitHub profile: [@kamalesh404](https://github.com/kamalesh404).
+If GitHub Private Vulnerability Reporting has not yet been activated by the repository maintainer, or if the form is inaccessible, contact the project maintainer directly via their verified GitHub profile: [@kamalesh404](https://github.com/kamalesh404).
 
 ---
 
@@ -43,5 +44,5 @@ ByteBrain operates as a static client-side web application. Areas of security fo
 - **Dependency Vulnerabilities:** Known Common Vulnerabilities and Exposures (CVEs) in third-party npm packages.
 
 ### Out of Scope
-- Prompt injection or LLM "jailbreaks" that manipulate the conversational output within the user's own browser session without cross-origin impact or code execution.
+- Prompt injection or LLM "jailbreaks" that manipulate conversational output within the user's own browser session without cross-origin impact or code execution.
 - Denial of Service caused by exhausting local device GPU/VRAM through intentionally massive user prompts or files.

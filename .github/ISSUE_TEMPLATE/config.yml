@@ -2,7 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: Security Vulnerabilities
     url: https://github.com/kamalesh404/ByteBrain/security/advisories/new
-    about: Please report security vulnerabilities privately through GitHub Advisory.
-  - name: Questions & General Discussions
-    url: https://github.com/kamalesh404/ByteBrain/discussions
-    about: Ask questions, share study workflows, or connect with other ByteBrain users.
+    about: Report security issues privately (requires repository owner to enable Private Vulnerability Reporting).
+  - name: Questions & General Support
+    url: https://github.com/kamalesh404/ByteBrain/issues
+    about: Ask questions, search existing issues, or get support (GitHub Discussions is currently disabled).

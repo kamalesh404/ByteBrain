@@ -29,6 +29,8 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  const isEngineBusy = isGenerating || Boolean(engineState);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -82,14 +84,25 @@ function App() {
   };
 
   const handleClearCache = async () => {
-    setCacheStatus('Clearing...');
-    const deleted = await aiService.deleteModelCache();
-    if (deleted) {
-      setCacheStatus('Cache cleared successfully!');
-    } else {
-      setCacheStatus('No cache found or failed to clear.');
+    if (isEngineBusy) {
+      setCacheStatus('Cannot clear cache while AI is initializing or generating.');
+      setTimeout(() => setCacheStatus(''), 4000);
+      return;
     }
-    setTimeout(() => setCacheStatus(''), 3000);
+
+    setCacheStatus('Clearing...');
+    try {
+      const deleted = await aiService.deleteModelCache();
+      if (deleted) {
+        setCacheStatus('Cache cleared successfully!');
+      } else {
+        setCacheStatus('No cache found or failed to clear.');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to clear cache.';
+      setCacheStatus(message);
+    }
+    setTimeout(() => setCacheStatus(''), 4000);
   };
 
   const handleSend = async () => {
@@ -359,13 +372,19 @@ function App() {
               </h4>
               <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
-                  ByteBrain downloads the AI model (~1.8 GB) directly to your browser's local cache so it can run securely offline. If you need to free up space on your hard drive, you can clear this cache.
+                  ByteBrain caches the AI model weights (~1.8-2.3 GB) in your browser's local CacheStorage after your first submitted prompt. If you need to free up space on your hard drive, you can clear this cache.
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: cacheStatus.includes('success') ? '#10b981' : 'var(--text-primary)' }}>
-                    {cacheStatus || 'Manage AI Model Cache'}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: cacheStatus.includes('success') ? '#10b981' : isEngineBusy ? '#f59e0b' : 'var(--text-primary)' }}>
+                    {cacheStatus || (isEngineBusy ? 'Engine active (cache clearing unavailable)' : 'Manage AI Model Cache')}
                   </span>
-                  <button className="danger-btn" onClick={handleClearCache}>
+                  <button
+                    className="danger-btn"
+                    onClick={handleClearCache}
+                    disabled={isEngineBusy}
+                    title={isEngineBusy ? "Cannot clear cache while AI engine is busy" : "Delete Cache"}
+                    aria-label="Delete model cache"
+                  >
                     <Trash2 size={16} /> Delete Cache
                   </button>
                 </div>

@@ -9,11 +9,20 @@ class AIService {
   private engine: MLCEngineInterface | null = null;
   private initPromise: Promise<void> | null = null;
   private worker: Worker | null = null;
+  private isGenerating = false;
   // Capable 3.8B parameter model running in 4-bit quantization (~1.8-2.3 GB)
   private modelId = 'Phi-3-mini-4k-instruct-q4f16_1-MLC';
 
   get isInitializing(): boolean {
     return Boolean(this.initPromise);
+  }
+
+  get isGeneratingResponse(): boolean {
+    return this.isGenerating;
+  }
+
+  get isBusy(): boolean {
+    return Boolean(this.initPromise) || this.isGenerating;
   }
 
   get isReady(): boolean {
@@ -83,14 +92,17 @@ class AIService {
   }
 
   async deleteModelCache(): Promise<boolean> {
+    if (this.isBusy) {
+      throw new Error('Cannot clear model cache while the AI engine is initializing or generating a response.');
+    }
+
     try {
-      if (this.engine) {
-        if (this.worker) {
-          this.worker.terminate();
-          this.worker = null;
-        }
-        this.engine = null;
+      // Clean up worker and engine instances consistently, not conditional on engine being non-null
+      if (this.worker) {
+        this.worker.terminate();
+        this.worker = null;
       }
+      this.engine = null;
 
       if (typeof caches === 'undefined') {
         return false;
@@ -111,7 +123,7 @@ class AIService {
       return deleted;
     } catch (err) {
       console.error('Failed to clear cache', err);
-      return false;
+      throw err;
     }
   }
 
@@ -129,39 +141,47 @@ class AIService {
     if (!this.engine) {
       throw new Error('AI Engine is not initialized. Please ensure model loading completes before submitting prompts.');
     }
-
-    let prompt = userMessage;
-    if (contextFilesText) {
-      prompt = `Here is the reference material provided by the user:\n\n${contextFilesText}\n\nBased on the above material, please answer the user's prompt:\n${userMessage}`;
+    if (this.isGenerating) {
+      throw new Error('AI Engine is currently processing another request.');
     }
 
-    const messages = [
-      {
-        role: 'system' as const,
-        content:
-          "You are ByteBrain, a helpful, precise, and encouraging AI Study Companion. Answer the user's questions clearly. If they provide reference material (notes/PDF text), base your answers strictly on that material.",
-      },
-      { role: 'user' as const, content: prompt },
-    ];
-
-    if (onChunk) {
-      const chunks = await this.engine.chat.completions.create({
-        messages,
-        stream: true,
-      });
-
-      let fullResponse = '';
-      for await (const chunk of chunks) {
-        const delta = chunk.choices[0]?.delta?.content || '';
-        fullResponse += delta;
-        onChunk(delta);
+    this.isGenerating = true;
+    try {
+      let prompt = userMessage;
+      if (contextFilesText) {
+        prompt = `Here is the reference material provided by the user:\n\n${contextFilesText}\n\nBased on the above material, please answer the user's prompt:\n${userMessage}`;
       }
-      return fullResponse;
-    } else {
-      const reply = await this.engine.chat.completions.create({
-        messages,
-      });
-      return reply.choices[0]?.message?.content || '';
+
+      const messages = [
+        {
+          role: 'system' as const,
+          content:
+            "You are ByteBrain, a helpful, precise, and encouraging AI Study Companion. Answer the user's questions clearly. If they provide reference material (notes/PDF text), base your answers strictly on that material.",
+        },
+        { role: 'user' as const, content: prompt },
+      ];
+
+      if (onChunk) {
+        const chunks = await this.engine.chat.completions.create({
+          messages,
+          stream: true,
+        });
+
+        let fullResponse = '';
+        for await (const chunk of chunks) {
+          const delta = chunk.choices[0]?.delta?.content || '';
+          fullResponse += delta;
+          onChunk(delta);
+        }
+        return fullResponse;
+      } else {
+        const reply = await this.engine.chat.completions.create({
+          messages,
+        });
+        return reply.choices[0]?.message?.content || '';
+      }
+    } finally {
+      this.isGenerating = false;
     }
   }
 }

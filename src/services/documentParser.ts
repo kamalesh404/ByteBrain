@@ -14,9 +14,11 @@ export const parsePDF = async (file: File): Promise<string> => {
 
   const arrayBuffer = await file.arrayBuffer();
   const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-  const pdf = await loadingTask.promise;
+  let pdf: Awaited<typeof loadingTask.promise> | null = null;
 
   try {
+    pdf = await loadingTask.promise;
+
     let fullText = '';
 
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -37,8 +39,19 @@ export const parsePDF = async (file: File): Promise<string> => {
     }
     return trimmed;
   } finally {
-    await pdf.cleanup();
-    await loadingTask.destroy();
+    if (pdf) {
+      try {
+        await pdf.cleanup();
+      } catch (cleanupErr) {
+        console.warn('Failed to cleanup PDF document resources:', cleanupErr);
+      }
+    }
+
+    try {
+      await loadingTask.destroy();
+    } catch (destroyErr) {
+      console.warn('Failed to destroy PDF loading task:', destroyErr);
+    }
   }
 };
 
