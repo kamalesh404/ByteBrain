@@ -1,0 +1,76 @@
+name: Bug Report
+description: Report an issue, unexpected behavior, or error in ByteBrain
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please provide as much detail as possible.
+
+        > **Privacy Warning:** Never upload sensitive, confidential, or private study materials publicly on GitHub. If an issue involves document parsing, please test with a generic sample document.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      description: Which part of ByteBrain is experiencing the issue?
+      options:
+        - "AI Model Initialization / Download"
+        - "AI Inference / Streaming Response"
+        - "WebGPU Detection / GPU Acceleration"
+        - "PDF Document Parsing"
+        - "Image OCR (Tesseract.js)"
+        - "User Interface / Dark Mode / Styling"
+        - "Cache Storage / Settings Modal"
+        - "Build / Tooling / Developer Setup"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment & System Information
+      description: Please share details about your browser and hardware.
+      placeholder: |
+        - Operating System: (e.g. Windows 11, macOS 14 Sonoma, Ubuntu 24.04)
+        - Browser & Version: (e.g. Chrome 124, Edge 124, Brave)
+        - GPU / Hardware: (e.g. NVIDIA RTX 3060 12GB, Apple M2 16GB, Intel Iris Xe)
+        - WebGPU Status: (Check chrome://gpu or navigator.gpu status)
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Clear, numbered steps to reproduce the issue.
+      placeholder: |
+        1. Open ByteBrain at http://localhost:5173
+        2. Upload a sample PDF or ask a question
+        3. Observe the loading state
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually occurred?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console Logs and Error Output
+      description: Paste any browser developer console errors (press F12 -> Console). Ensure all personal data or tokens are removed.
+      render: shell

@@ -16,7 +16,7 @@ function App() {
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [engineState, setEngineState] = useState<{status: string, progress: number} | null>(null);
-  
+
   // File upload state
   const [attachedFiles, setAttachedFiles] = useState<{name: string, text: string}[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -24,10 +24,13 @@ function App() {
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
   const [cacheStatus, setCacheStatus] = useState<string>('');
-  
+  const [isClearingCache, setIsClearingCache] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const isEngineBusy = isGenerating || Boolean(engineState) || isClearingCache;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -36,6 +39,16 @@ function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, engineState]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showSettings) {
+        setShowSettings(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSettings]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'pdf' | 'image') => {
     const file = e.target.files?.[0];
@@ -51,9 +64,10 @@ function App() {
       }
 
       setAttachedFiles(prev => [...prev, { name: file.name, text: extractedText }]);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error("Failed to parse file", err);
-      alert(`Failed to read the file. Error: ${err.message || err}`);
+      alert(`Failed to read the file. Error: ${errorMessage}`);
     } finally {
       setIsUploading(false);
       // Reset input
@@ -71,26 +85,44 @@ function App() {
   };
 
   const handleClearCache = async () => {
-    setCacheStatus('Clearing...');
-    const deleted = await aiService.deleteModelCache();
-    if (deleted) {
-      setCacheStatus('Cache cleared successfully!');
-    } else {
-      setCacheStatus('No cache found or failed to clear.');
+    if (isEngineBusy) {
+      setCacheStatus(
+        isClearingCache
+          ? 'Cache clearing is already in progress...'
+          : 'Cannot clear cache while AI is initializing or generating.'
+      );
+      setTimeout(() => setCacheStatus(''), 4000);
+      return;
     }
-    setTimeout(() => setCacheStatus(''), 3000);
+
+    setIsClearingCache(true);
+    setCacheStatus('Clearing model cache...');
+    try {
+      const deleted = await aiService.deleteModelCache();
+      if (deleted) {
+        setCacheStatus('Cache cleared successfully!');
+      } else {
+        setCacheStatus('No cache found or failed to clear.');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to clear cache.';
+      setCacheStatus(message);
+    } finally {
+      setIsClearingCache(false);
+      setTimeout(() => setCacheStatus(''), 4000);
+    }
   };
 
   const handleSend = async () => {
-    if ((!input.trim() && attachedFiles.length === 0) || isGenerating) return;
+    if ((!input.trim() && attachedFiles.length === 0) || isGenerating || isClearingCache) return;
 
     const currentInput = input;
     setInput('');
-    
+
     // Combine file text if present
     let contextFilesText = '';
     let userDisplayMessage = currentInput;
-    
+
     if (attachedFiles.length > 0) {
       contextFilesText = attachedFiles.map(f => `--- File: ${f.name} ---\n${f.text}`).join('\n\n');
       if (!userDisplayMessage) {
@@ -125,22 +157,26 @@ function App() {
         }));
       });
 
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      setMessages(prev => [...prev, { 
-        id: Date.now().toString(), 
-        role: 'ai', 
-        content: "Sorry, I encountered an error. Please ensure your browser supports WebGPU." 
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred.';
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'ai',
+        content: `Sorry, ByteBrain encountered an error:\n\n**${errorMessage}**\n\nPlease ensure your browser supports WebGPU (Chrome 113+, Edge 113+) and hardware acceleration is turned on.`
       }]);
     } finally {
       setIsGenerating(false);
+      setEngineState(null);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (!isClearingCache) {
+        handleSend();
+      }
     }
   };
 
@@ -153,19 +189,19 @@ function App() {
       {/* Sidebar */}
       <aside className={`sidebar ${!sidebarOpen ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
-          <button className="icon-btn" onClick={() => setSidebarOpen(false)}>
+          <button className="icon-btn" onClick={() => setSidebarOpen(false)} aria-label="Collapse sidebar" title="Collapse sidebar">
             <Menu size={20} />
           </button>
           {sidebarOpen && (
-            <button className="icon-btn" onClick={() => setShowSettings(true)}>
+            <button className="icon-btn" onClick={() => setShowSettings(true)} aria-label="Settings" title="Settings">
               <Settings size={20} />
             </button>
           )}
         </div>
-        
+
         {sidebarOpen && (
           <div style={{ padding: '0 16px 16px' }}>
-            <button className="new-chat-btn" onClick={() => setMessages([])}>
+            <button className="new-chat-btn" onClick={() => setMessages([])} aria-label="New chat">
               <Plus size={16} /> New chat
             </button>
           </div>
@@ -191,7 +227,7 @@ function App() {
         {/* Top Nav */}
         <header className="top-nav">
           {!sidebarOpen && (
-            <button className="icon-btn" onClick={() => setSidebarOpen(true)}>
+            <button className="icon-btn" onClick={() => setSidebarOpen(true)} aria-label="Open sidebar" title="Open sidebar">
               <Menu size={20} />
             </button>
           )}
@@ -221,18 +257,18 @@ function App() {
               </div>
             ))
           )}
-          
+
           {engineState && (
             <div className="message-wrapper ai">
                <div className="avatar ai">
                   <Bot size={20} color="#fff" />
                 </div>
                 <div className="message-content" style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                  
+
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 500, color: '#c7d2fe' }}>
                     <Cpu size={16} className="lucide-spin" /> Preparing Local AI Engine
                   </div>
-                  
+
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
                     {engineState.status.includes('cache') ? (
                       <span style={{ color: '#10b981' }}>⚡ Using high-speed local cache memory...</span>
@@ -246,7 +282,7 @@ function App() {
                   <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--bg-primary)', borderRadius: '3px', overflow: 'hidden' }}>
                     <div style={{ width: `${Math.max(2, engineState.progress * 100)}%`, height: '100%', backgroundColor: '#6366f1', transition: 'width 0.3s ease-out' }}></div>
                   </div>
-                  
+
                 </div>
             </div>
           )}
@@ -266,7 +302,7 @@ function App() {
 
         {/* Input Area */}
         <div className="input-container">
-          
+
           {/* File Attachments Area */}
           {attachedFiles.length > 0 && (
             <div style={{ display: 'flex', gap: '8px', padding: '0 16px 12px', flexWrap: 'wrap' }}>
@@ -274,7 +310,7 @@ function App() {
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-secondary)', padding: '6px 12px', borderRadius: '16px', fontSize: '13px', border: '1px solid var(--border)' }}>
                   <FileText size={14} color="#6366f1" />
                   <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                  <button onClick={() => removeFile(i)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
+                  <button onClick={() => removeFile(i)} aria-label={`Remove ${f.name}`} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' }}>
                     <X size={14} />
                   </button>
                 </div>
@@ -283,38 +319,47 @@ function App() {
           )}
 
           <div className="input-box">
-            <button className="icon-btn" title="Upload Image" onClick={() => imageInputRef.current?.click()} style={{ marginBottom: '4px' }}>
+            <button className="icon-btn" title="Upload Image" aria-label="Upload Image" onClick={() => imageInputRef.current?.click()} style={{ marginBottom: '4px' }}>
               <ImageIcon size={20} />
             </button>
-            <button className="icon-btn" title="Upload PDF" onClick={() => fileInputRef.current?.click()} style={{ marginBottom: '4px' }}>
+            <button className="icon-btn" title="Upload PDF" aria-label="Upload PDF" onClick={() => fileInputRef.current?.click()} style={{ marginBottom: '4px' }}>
               <FileText size={20} />
             </button>
-            
-            <textarea 
-              placeholder={isUploading ? "Scanning file text..." : "Ask a question or paste your notes here..."}
+
+            <textarea
+              placeholder={
+                isUploading
+                  ? "Scanning file text..."
+                  : isClearingCache
+                  ? "Cache deletion in progress..."
+                  : "Ask a question or paste your notes here..."
+              }
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={1}
-              disabled={isUploading}
+              disabled={isUploading || isClearingCache}
               style={{ minHeight: '24px' }}
+              aria-label="Message prompt"
             />
-            
+
             {isGenerating && !engineState ? (
-              <button 
-                className="send-btn" 
+              <button
+                className="send-btn"
                 onClick={handleStop}
                 style={{ backgroundColor: '#ef4444', color: '#fff', borderRadius: '12px' }}
                 title="Stop generating"
+                aria-label="Stop generating"
               >
                 <Square size={14} fill="currentColor" />
               </button>
             ) : (
-              <button 
-                className="send-btn" 
+              <button
+                className="send-btn"
                 onClick={handleSend}
-                disabled={(!input.trim() && attachedFiles.length === 0) || isGenerating || isUploading}
-                title="Send message"
+                disabled={(!input.trim() && attachedFiles.length === 0) || isGenerating || isUploading || isClearingCache}
+                title={isClearingCache ? "Cannot send message while clearing cache" : "Send message"}
+                aria-label="Send message"
               >
                 <Send size={18} />
               </button>
@@ -329,27 +374,33 @@ function App() {
       {/* Settings Modal */}
       {showSettings && (
         <div className="modal-overlay" onClick={() => setShowSettings(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
             <div className="modal-header">
-              <h3 className="modal-title">Settings</h3>
-              <button className="icon-btn" onClick={() => setShowSettings(false)}>
+              <h3 id="settings-modal-title" className="modal-title">Settings</h3>
+              <button className="icon-btn" onClick={() => setShowSettings(false)} aria-label="Close settings" title="Close settings">
                 <X size={20} />
               </button>
             </div>
-            
+
             <div style={{ marginTop: '24px' }}>
               <h4 style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <HardDrive size={16} /> Storage Management
               </h4>
               <div style={{ background: 'var(--bg-secondary)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
                 <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.5' }}>
-                  ByteBrain downloads the AI model (~1.8 GB) directly to your browser's local cache so it can run securely offline. If you need to free up space on your hard drive, you can clear this cache.
+                  ByteBrain caches the AI model weights (~1.8-2.3 GB) in your browser's local CacheStorage after your first submitted prompt. If you need to free up space on your hard drive, you can clear this cache.
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: cacheStatus.includes('success') ? '#10b981' : 'var(--text-primary)' }}>
-                    {cacheStatus || 'Manage AI Model Cache'}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: cacheStatus.includes('success') ? '#10b981' : isEngineBusy ? '#f59e0b' : 'var(--text-primary)' }}>
+                    {cacheStatus || (isEngineBusy ? (isClearingCache ? 'Clearing cache in progress...' : 'Engine active (cache clearing unavailable)') : 'Manage AI Model Cache')}
                   </span>
-                  <button className="danger-btn" onClick={handleClearCache}>
+                  <button
+                    className="danger-btn"
+                    onClick={handleClearCache}
+                    disabled={isEngineBusy}
+                    title={isClearingCache ? "Cache deletion in progress" : isEngineBusy ? "Cannot clear cache while AI engine is busy" : "Delete Cache"}
+                    aria-label="Delete model cache"
+                  >
                     <Trash2 size={16} /> Delete Cache
                   </button>
                 </div>
