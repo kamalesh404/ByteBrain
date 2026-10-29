@@ -1,0 +1,43 @@
+name: Feature Request
+description: Propose a new feature, improvement, or idea for ByteBrain
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We welcome proposals to make ByteBrain a better, faster, and more accessible study companion! Please keep in mind that all AI capabilities must operate 100% locally in the browser.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem or limitation are you or other students facing?
+      placeholder: "I am having difficulty studying when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature or improvement you would like to see implemented.
+      placeholder: "ByteBrain could add..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative workarounds or designs?
+    validations:
+      false
+
+  - type: textarea
+    id: local_constraints
+    attributes:
+      label: Client-Side / WebGPU Considerations
+      description: How might this affect browser memory, GPU resources, or client-side storage?
+    validations:
+      false

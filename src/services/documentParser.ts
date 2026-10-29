@@ -8,27 +8,54 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 export const parsePDF = async (file: File): Promise<string> => {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  
-  let fullText = '';
-  
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items.map((item: any) => item.str).join(' ');
-    fullText += pageText + '\n\n';
+  if (file.size === 0) {
+    throw new Error('Selected PDF file is empty (0 bytes).');
   }
-  
-  return fullText.trim();
+
+  const arrayBuffer = await file.arrayBuffer();
+  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+  const pdf = await loadingTask.promise;
+
+  try {
+    let fullText = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item) => ('str' in item ? (item as { str: string }).str : ''))
+        .filter(Boolean)
+        .join(' ');
+      if (pageText.trim()) {
+        fullText += pageText + '\n\n';
+      }
+    }
+
+    const trimmed = fullText.trim();
+    if (!trimmed) {
+      return '[Note: No selectable text found in this PDF. If this is a scanned document, consider saving pages as images and uploading them for OCR text recognition.]';
+    }
+    return trimmed;
+  } finally {
+    await pdf.cleanup();
+    await loadingTask.destroy();
+  }
 };
 
 export const parseImage = async (file: File): Promise<string> => {
+  if (file.size === 0) {
+    throw new Error('Selected image file is empty (0 bytes).');
+  }
+
   // Use object URL to prevent file reading issues in some browsers
   const objectUrl = URL.createObjectURL(file);
   try {
     const result = await Tesseract.recognize(objectUrl, 'eng');
-    return result.data.text.trim();
+    const text = result.data.text.trim();
+    if (!text) {
+      return '[Note: OCR did not detect any readable English text in this image.]';
+    }
+    return text;
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
