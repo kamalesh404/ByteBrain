@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@mlc-ai/web-llm": "^0.2.84",
-    "lucide-react": "^1.17.0",
+    "lucide-react": "^1.61.0",
     "pdfjs-dist": "^6.0.227",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
