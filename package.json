@@ -11,7 +11,7 @@
     "test": "node --experimental-strip-types --test test/concurrency.test.mjs"
   },
   "dependencies": {
-    "@mlc-ai/web-llm": "^0.2.84",
+    "@mlc-ai/web-llm": "^0.2.87",
     "lucide-react": "^1.17.0",
     "pdfjs-dist": "^6.0.227",
     "react": "^19.2.6",
